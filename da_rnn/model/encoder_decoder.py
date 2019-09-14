@@ -4,33 +4,34 @@ import tensorflow as tf
 from tensorflow.keras import layers
 
 
-class InputAttention(layers.Layer):
-    def __init__(self, num_steps, reuse=tf.AUTO_REUSE):
-        self.num_steps = num_steps
-        with tf.variable_scope('Attention_Layer', reuse=reuse):
-            self.attention_w = layers.Dense(self.num_steps, name='W')
-            self.attention_u = layers.Dense(self.num_steps, name='U')
+class Attention(layers.Layer):
+    def __init__(self, input_dim, var_scope, reuse=tf.AUTO_REUSE):
+        self.input_dim = input_dim
+        with tf.variable_scope(var_scope, reuse=reuse):
+            self.attention_w = layers.Dense(self.input_dim, name='W')
+            self.attention_u = layers.Dense(self.input_dim, name='U')
             self.attention_v = layers.Dense(1, name='V')
 
     def call(self, input_x, prev_state_tuple):
         """
         Compute the attention weight for input series
         hidden_state, cell_state (batch_size, hidden_dim)
-        input_x (batch_size, num_series, num_steps)
+        input_x (batch_size, num_series, input_dim),
+        input_dim = num_steps for input attention
         """
         prev_hidden_state, prev_cell_state = prev_state_tuple
         # (batch_size, 1, hidden_dim * 2)
         concat_state = tf.expand_dims(tf.concat([prev_hidden_state, prev_cell_state], axis=-1),
                                       axis=1)
 
-        # (batch_size, num_series, num_steps)
+        # (batch_size, num_series, input_dim)
         score_ = self.attention_w(concat_state) + self.attention_v(input_x)
 
         # (batch_size, num_series, 1)
         score = self.attention_v(tf.nn.tanh(score_))
 
         # (batch_size, num_series)
-        weight = tf.squeeze(tf.nn.softmax(score, axis=1))
+        weight = tf.squeeze(tf.nn.softmax(score, axis=1), axis=-1)
 
         return weight
 
@@ -38,7 +39,7 @@ class InputAttention(layers.Layer):
 class Encoder(layers.Model):
     def __int__(self, hidden_dim, num_steps):
         self.hidden_dim = hidden_dim
-        self.attention_layer = InputAttention(num_steps)
+        self.attention_layer = Attention(num_steps, var_scope='input_attention')
 
     def call(self, inputs):
         def one_step(self, prev_state_tuple, current_input):
@@ -83,12 +84,11 @@ class Encoder(layers.Model):
         return all_hidden_state
 
 
+
 class Decoder(layers.Model):
-    def __init__(self, hidden_dim):
+    def __init__(self, hidden_dim, num_steps):
         self.hidden_dim = hidden_dim
-        self.decoder_layer = layers.LSTM(self.hidden_dim,
-                                         return_sequences=True,
-                                         return_state=True)
+        self.attention_layer = Attention(num_steps, var_scope='temporal_attention')
 
     def call(self, inputs):
         return
