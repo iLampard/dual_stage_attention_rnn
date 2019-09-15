@@ -4,7 +4,7 @@ import tensorflow as tf
 from tensorflow.keras import layers
 
 
-class Attention(layers.Layer):
+class Attention(layers.Model):
     def __init__(self, input_dim, var_scope, reuse=tf.AUTO_REUSE):
         self.input_dim = input_dim
         with tf.variable_scope(var_scope, reuse=reuse):
@@ -28,46 +28,62 @@ class Attention(layers.Layer):
         score_ = self.attention_w(concat_state) + self.attention_v(input_x)
 
         # (batch_size, num_series, 1)
+        # Equation (8)
         score = self.attention_v(tf.nn.tanh(score_))
 
         # (batch_size, num_series)
+        # Equation (9)
         weight = tf.squeeze(tf.nn.softmax(score, axis=1), axis=-1)
 
         return weight
+
+
+class LSTMCell(layers.Model):
+    def __init__(self, hidden_dim):
+        self.hidden_dim = hidden_dim
+        self.layer_fc = layers.Dense(self.hidden_dim)
+
+    def call(self, input_x, prev_state_tuple):
+        """ Return next step's hidden state and cell state  """
+        hidden_state, cell_state = prev_state_tuple
+
+        # (batch_size, hidden_dim + input_dim)
+        concat_input = tf.concat([hidden_state, input_x], axis=-1)
+
+        # (batch_size * 4, hidden_dim + input_dim)
+        concat_input_tiled = tf.tile(concat_input, [4, 1])
+
+        # Equation (3) - (6) without activation
+        forget_, input_, output_, cell_bar = tf.split(self.layer_fc(concat_input_tiled),
+                                                      axis=0,
+                                                      num_or_size_splits=4)
+
+        # (batch_size, hidden_dim)
+        # Equation (6)
+        cell_state = tf.nn.sigmoid(forget_) * cell_state + \
+                     tf.nn.sigmoid(input_) * tf.nn.tanh(cell_bar)
+
+        # Equation (7)
+        hidden_state = tf.nn.sigmoid(output_) * tf.nn.tanh(cell_state)
+        return (hidden_state, cell_state)
 
 
 class Encoder(layers.Model):
     def __int__(self, hidden_dim, num_steps):
         self.hidden_dim = hidden_dim
         self.attention_layer = Attention(num_steps, var_scope='input_attention')
+        self.lstm = LSTMCell(hidden_dim)
 
     def call(self, inputs):
         def one_step(self, prev_state_tuple, current_input):
             """ Move along the time axis by one step  """
-            hidden_state, cell_state = prev_state_tuple
 
             # (batch_size, num_series)
             weight = self.attention_layer(inputs, prev_state_tuple)
 
             weighted_current_input = weight * current_input
 
-            # (batch_size, hidden_dim + num_series)
-            concat_input = tf.concat([hidden_state, weighted_current_input], axis=-1)
-
-            # (batch_size * 4, hidden_dim + num_series)
-            concat_input_tiled = tf.tile(concat_input, [4, 1])
-
-            forget_, input_, output_, cell_bar = tf.split(self.layer_fc(concat_input_tiled),
-                                                          axis=0,
-                                                          num_or_size_splits=4)
-
-            # (batch_size, hidden_dim)
-            cell_state = tf.nn.sigmoid(forget_) * cell_state + \
-                         tf.nn.sigmoid(input_) * tf.nn.tanh(cell_bar)
-
-            hidden_state = tf.nn.sigmoid(output_) * tf.nn.tanh(cell_state)
-
-            return (hidden_state, cell_state)
+            return self.LSTMCell(weighted_current_input, prev_state_tuple)
 
         # (num_steps, batch_size, num_series)
         inputs_ = tf.transpose(inputs, perm=[1, 0, 2])
@@ -84,11 +100,14 @@ class Encoder(layers.Model):
         return all_hidden_state
 
 
-
 class Decoder(layers.Model):
     def __init__(self, hidden_dim, num_steps):
         self.hidden_dim = hidden_dim
         self.attention_layer = Attention(num_steps, var_scope='temporal_attention')
+        self.lstm = LSTMCell(hidden_dim)
 
     def call(self, inputs):
+
+
+
         return
