@@ -25,7 +25,7 @@ class Attention(layers.Model):
                                       axis=1)
 
         # (batch_size, num_series, input_dim)
-        score_ = self.attention_w(concat_state) + self.attention_v(input_x)
+        score_ = self.attention_w(concat_state) + self.attention_u(input_x)
 
         # (batch_size, num_series, 1)
         # Equation (8)
@@ -69,12 +69,16 @@ class LSTMCell(layers.Model):
 
 
 class Encoder(layers.Model):
-    def __int__(self, hidden_dim, num_steps):
-        self.hidden_dim = hidden_dim
+    def __int__(self, encoder_dim, num_steps):
+        self.encoder_dim = encoder_dim
         self.attention_layer = Attention(num_steps, var_scope='input_attention')
-        self.lstm = LSTMCell(hidden_dim)
+        self.lstm = LSTMCell(encoder_dim)
 
     def call(self, inputs):
+        """
+        inputs: (batch_size, num_steps, num_series)
+        """
+
         def one_step(self, prev_state_tuple, current_input):
             """ Move along the time axis by one step  """
 
@@ -84,6 +88,13 @@ class Encoder(layers.Model):
             weighted_current_input = weight * current_input
 
             return self.LSTMCell(weighted_current_input, prev_state_tuple)
+
+        # Get the batch size from inputs
+        self.batch_size = tf.shape(inputs)[0]
+        self.num_steps = inputs.get_shape().as_list()[1]
+
+        self.init_hidden_state = tf.random_normal([self.batch_size, self.hidden_dim])
+        self.init_cell_state = tf.random_normal([self.batch_size, self.hidden_dim])
 
         # (num_steps, batch_size, num_series)
         inputs_ = tf.transpose(inputs, perm=[1, 0, 2])
@@ -101,13 +112,68 @@ class Encoder(layers.Model):
 
 
 class Decoder(layers.Model):
-    def __init__(self, hidden_dim, num_steps):
-        self.hidden_dim = hidden_dim
+    def __init__(self, decoder_dim, num_steps):
+        self.decoder_dim = decoder_dim
         self.attention_layer = Attention(num_steps, var_scope='temporal_attention')
-        self.lstm = LSTMCell(hidden_dim)
+        self.lstm = LSTMCell(decoder_dim)
+        self.layer_prediction_fc_1 = layers.Dense(decoder_dim)
+        self.layer_prediction_fc_2 = layers.Dense(1)
 
-    def call(self, inputs):
+    def call(self, encoder_states, labels):
+        """
+        encoder_states: (batch_size, num_steps, encoder_dim)
+        labels: (batch_size, num_steps)
+        """
 
+        def one_step(self, accumulator, current_label):
+            """ Move along the time axis by one step  """
 
+            prev_state_tuple, context = accumulator
+            # (batch_size, num_steps)
+            # Equation (12) (13)
+            weight = self.attention_layer(encoder_states, prev_state_tuple)
 
-        return
+            # Equation (14)
+            # (batch_size, encoder_dim)
+            context = tf.reduce_sum(tf.expand_dims(weight, axis=-1) * encoder_states,
+                                    axis=1)
+
+            # Equation (15)
+            # (batch_size, 1)
+            y_tilde = self.layers_fc_context(tf.concat([current_label, context], axis=-1))
+
+            # Equation (16)
+            return self.LSTMCell(y_tilde, prev_state_tuple), context
+
+        # Get the batch size from inputs
+        self.batch_size = tf.shape(encoder_states)[0]
+        self.num_steps = encoder_states.get_shape().as_list()[1]
+
+        init_hidden_state = tf.random_normal([self.batch_size, self.decoder_dim])
+        init_cell_state = tf.random_normal([self.batch_size, self.decoder_dim])
+
+        # (num_steps, batch_size, num_series)
+        inputs_ = tf.transpose(encoder_states, perm=[1, 0, 2])
+
+        # use scan to run over all time steps
+        state_tuple, all_context = tf.scan(one_step,
+                                           elems=inputs_,
+                                           initializer=(init_hidden_state,
+                                                        init_cell_state,
+                                                        None))
+
+        # (batch_size, num_steps, decoder_dim)
+        all_hidden_state = tf.transpose(state_tuple[0], perm=[1, 0, 2])
+
+        # (batch_size, num_steps, encoder_dim)
+        all_context = tf.transpose(state_tuple[0], perm=[1, 0, 2])
+
+        last_hidden_state = all_hidden_state[:, -1, :]
+        last_context = all_context[:, -1, :]
+
+        # (batch_size, 1)
+        # Equation (22)
+        pred_ = self.layer_prediction_fc_1(tf.concat([last_hidden_state, last_context], axis=-1))
+        pred = self.layer_prediction_fc_2(pred_)
+
+        return pred
