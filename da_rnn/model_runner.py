@@ -31,8 +31,8 @@ class ModelRunner:
         self.model_checkpoint_path = flags.save_dir
         self.lr = flags.learning_rate
         self.write_summary = flags.write_summary
-        self.rnn_dim = flags.rnn_dim
-        self.dropout = flags.dropout
+        self.encoder_dim = flags.encoder_dim
+        self.decoder_dim = flags.decoder_dim
         self.batch_size = flags.batch_size
 
         logging.get_absl_logger().addHandler(logging_base.StreamHandler())
@@ -123,9 +123,9 @@ class ModelRunner:
         epoch_loss = []
         epoch_predictions = []
         epoch_labels = []
-        total_batch = dataset.num_examples // self.batch_size
+        total_batch = dataset.num_samples // self.batch_size
         for _ in range(total_batch):
-            input_x, label = dataset.next_batch(self.batch_size)
+            (input_x,), (label,) = zip(*dataset.next_batch(self.batch_size))
             loss, prediction = self.model_wrapper.run_batch((input_x, label),
                                                             lr,
                                                             phase=phase)
@@ -141,7 +141,8 @@ class ModelRunner:
         """ Initialize the directory to save models and logs """
         folder_name = list()
         model_tags = {'lr': self.lr,
-                      'dim': self.rnn_dim}
+                      'encoder': self.encoder_dim,
+                      'decoder': self.decoder_dim}
 
         for key, value in model_tags.items():
             folder_name.append('{}-{}'.format(key, value))

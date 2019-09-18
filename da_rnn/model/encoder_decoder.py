@@ -2,10 +2,12 @@
 
 import tensorflow as tf
 from tensorflow.keras import layers
+from tensorflow import keras
 
 
-class Attention(layers.Model):
+class Attention(keras.Model):
     def __init__(self, input_dim, var_scope, reuse=tf.AUTO_REUSE):
+        super(Attention, self).__init__()
         self.input_dim = input_dim
         with tf.variable_scope(var_scope, reuse=reuse):
             self.attention_w = layers.Dense(self.input_dim, name='W')
@@ -20,6 +22,7 @@ class Attention(layers.Model):
         input_dim = num_steps for input attention
         """
         prev_hidden_state, prev_cell_state = prev_state_tuple
+
         # (batch_size, 1, hidden_dim * 2)
         concat_state = tf.expand_dims(tf.concat([prev_hidden_state, prev_cell_state], axis=-1),
                                       axis=1)
@@ -38,8 +41,9 @@ class Attention(layers.Model):
         return weight
 
 
-class LSTMCell(layers.Model):
+class LSTMCell(keras.Model):
     def __init__(self, hidden_dim):
+        super(LSTMCell, self).__init__()
         self.hidden_dim = hidden_dim
         self.layer_fc = layers.Dense(self.hidden_dim)
 
@@ -68,33 +72,37 @@ class LSTMCell(layers.Model):
         return (hidden_state, cell_state)
 
 
-class Encoder(layers.Model):
-    def __int__(self, encoder_dim, num_steps):
+class Encoder(keras.Model):
+    def __init__(self, encoder_dim, num_steps):
+        super(Encoder, self).__init__()
         self.encoder_dim = encoder_dim
         self.attention_layer = Attention(num_steps, var_scope='input_attention')
-        self.lstm = LSTMCell(encoder_dim)
+        self.lstm_cell = LSTMCell(encoder_dim)
 
     def call(self, inputs):
         """
         inputs: (batch_size, num_steps, num_series)
         """
 
-        def one_step(self, prev_state_tuple, current_input):
+        def one_step(prev_state_tuple, current_input):
             """ Move along the time axis by one step  """
 
+            # (batch_size, num_series, num_steps)
+            inputs_ = tf.transpose(inputs, perm=[0, 2, 1])
+
             # (batch_size, num_series)
-            weight = self.attention_layer(inputs, prev_state_tuple)
+            weight = self.attention_layer(inputs_, prev_state_tuple)
 
             weighted_current_input = weight * current_input
 
-            return self.LSTMCell(weighted_current_input, prev_state_tuple)
+            return self.lstm_cell(weighted_current_input, prev_state_tuple)
 
         # Get the batch size from inputs
         self.batch_size = tf.shape(inputs)[0]
         self.num_steps = inputs.get_shape().as_list()[1]
 
-        self.init_hidden_state = tf.random_normal([self.batch_size, self.hidden_dim])
-        self.init_cell_state = tf.random_normal([self.batch_size, self.hidden_dim])
+        self.init_hidden_state = tf.random_normal([self.batch_size, self.encoder_dim])
+        self.init_cell_state = tf.random_normal([self.batch_size, self.encoder_dim])
 
         # (num_steps, batch_size, num_series)
         inputs_ = tf.transpose(inputs, perm=[1, 0, 2])
@@ -103,19 +111,20 @@ class Encoder(layers.Model):
         state_tuple = tf.scan(one_step,
                               elems=inputs_,
                               initializer=(self.init_hidden_state,
-                                           self.init_cell_state,
-                                           0))
+                                           self.init_cell_state))
 
         # (batch_size, num_steps, hidden_dim)
         all_hidden_state = tf.transpose(state_tuple[0], perm=[1, 0, 2])
         return all_hidden_state
 
 
-class Decoder(layers.Model):
+class Decoder(keras.Model):
     def __init__(self, decoder_dim, num_steps):
+        super(Decoder, self).__init__()
         self.decoder_dim = decoder_dim
         self.attention_layer = Attention(num_steps, var_scope='temporal_attention')
-        self.lstm = LSTMCell(decoder_dim)
+        self.lstm_cell = LSTMCell(decoder_dim)
+        self.layer_fc_context = layers.Dense(1)
         self.layer_prediction_fc_1 = layers.Dense(decoder_dim)
         self.layer_prediction_fc_2 = layers.Dense(1)
 
@@ -125,7 +134,7 @@ class Decoder(layers.Model):
         labels: (batch_size, num_steps)
         """
 
-        def one_step(self, accumulator, current_label):
+        def one_step(accumulator, current_label):
             """ Move along the time axis by one step  """
 
             prev_state_tuple, context = accumulator
@@ -140,10 +149,10 @@ class Decoder(layers.Model):
 
             # Equation (15)
             # (batch_size, 1)
-            y_tilde = self.layers_fc_context(tf.concat([current_label, context], axis=-1))
+            y_tilde = self.layer_fc_context(tf.concat([current_label, context], axis=-1))
 
             # Equation (16)
-            return self.LSTMCell(y_tilde, prev_state_tuple), context
+            return self.lstm_cell(y_tilde, prev_state_tuple), context
 
         # Get the batch size from inputs
         self.batch_size = tf.shape(encoder_states)[0]
@@ -151,6 +160,7 @@ class Decoder(layers.Model):
 
         init_hidden_state = tf.random_normal([self.batch_size, self.decoder_dim])
         init_cell_state = tf.random_normal([self.batch_size, self.decoder_dim])
+        init_context = tf.random_normal([self.batch_size, self.decoder_dim])
 
         # (num_steps, batch_size, num_series)
         inputs_ = tf.transpose(encoder_states, perm=[1, 0, 2])
@@ -158,9 +168,9 @@ class Decoder(layers.Model):
         # use scan to run over all time steps
         state_tuple, all_context = tf.scan(one_step,
                                            elems=inputs_,
-                                           initializer=(init_hidden_state,
-                                                        init_cell_state,
-                                                        None))
+                                           initializer=((init_hidden_state,
+                                                        init_cell_state),
+                                                        init_context))
 
         # (batch_size, num_steps, decoder_dim)
         all_hidden_state = tf.transpose(state_tuple[0], perm=[1, 0, 2])
