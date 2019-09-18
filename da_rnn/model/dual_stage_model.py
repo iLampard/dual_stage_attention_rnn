@@ -1,6 +1,5 @@
 """ Main model definition  """
 
-import numpy as np
 import tensorflow as tf
 from da_rnn.model.encoder_decoder import Encoder, Decoder
 
