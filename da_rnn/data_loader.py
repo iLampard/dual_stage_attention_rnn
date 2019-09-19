@@ -1,6 +1,7 @@
 """ Data loaders  """
 import pandas as pd
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 
 
 class DataSet:
@@ -54,7 +55,7 @@ class BaseLoader:
     name = 'baseloader'
 
     def __init__(self):
-        self.train_data, self.valid_data, self.test_data = self.process_data()
+        self.train_data, self.valid_data, self.test_data, self.scaler = self.process_data()
 
     def load_dataset(self, num_steps):
         train_dataset = DataSet(self.train_data, num_steps)
@@ -105,5 +106,9 @@ class NasdaqLoader(BaseLoader):
         raw_data = pd.read_csv(csv_file, header=0)
 
         train_data, valid_data, test_data = self.split_train_test(raw_data.values)
+        scaler = MinMaxScaler()
+        train_data = scaler.fit_transform(train_data)
+        valid_data = scaler.transform(valid_data)
+        test_data = scaler.transform(test_data)
 
-        return train_data, valid_data, test_data
+        return train_data, valid_data, test_data, scaler

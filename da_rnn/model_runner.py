@@ -9,6 +9,7 @@ import logging as logging_base
 import operator
 import os
 import tensorflow as tf
+from da_rnn import metrics
 
 
 class StrEnum(str, enum.Enum):
@@ -26,14 +27,18 @@ class RunnerPhase(StrEnum):
 class ModelRunner:
     def __init__(self,
                  model,
-                 flags):
+                 scaler,
+                 flags,
+                 metrics=metrics.Metrics()):
         self.model_wrapper = ModelWrapper(model)
         self.model_checkpoint_path = flags.save_dir
+        self.scaler = scaler
         self.lr = flags.learning_rate
         self.write_summary = flags.write_summary
         self.encoder_dim = flags.encoder_dim
         self.decoder_dim = flags.decoder_dim
         self.batch_size = flags.batch_size
+        self.metrics = metrics
 
         logging.get_absl_logger().addHandler(logging_base.StreamHandler())
 
@@ -110,13 +115,15 @@ class ModelRunner:
 
         loss, predictions, labels = self.run_one_epoch(dataset, RunnerPhase.PREDICT, self.lr)
 
-        accuracy = np.mean(predictions == labels)
+        metrics_dict = self.metrics.get_metrics_dict(predictions, labels)
 
-        logging.info('Accuracy {}'.format(accuracy))
+        eval_info = self.metrics.metrics_dict_to_str(metrics_dict)
+
+        logging.info(eval_info)
 
         logging.info('Evaluation finished')
 
-        return {'accuracy': accuracy}
+        return metrics_dict
 
     def run_one_epoch(self, dataset, phase, lr):
         """ Run one complete epoch """
