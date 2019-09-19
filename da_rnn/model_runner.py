@@ -137,12 +137,10 @@ class ModelRunner:
                                                             lr,
                                                             phase=phase)
             epoch_loss.append(loss)
-            prediction_ = np.argmax(prediction, axis=1)
-            label_ = np.argmax(label, axis=1)
-            epoch_predictions.extend(prediction_)
-            epoch_labels.extend(label_)
+            epoch_predictions.append(prediction)
+            epoch_labels.append(label)
 
-        return np.array(epoch_loss), np.array(epoch_predictions), np.array(epoch_labels)
+        return np.array(epoch_loss), np.vstack(epoch_predictions), np.vstack(epoch_labels)
 
     def make_dir(self):
         """ Initialize the directory to save models and logs """

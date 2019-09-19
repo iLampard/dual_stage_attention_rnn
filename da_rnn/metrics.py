@@ -33,6 +33,6 @@ class Metrics:
         """ Convert metrics to a string to show in the console """
         eval_info = ''
         for key, value in metrics_dict.items():
-            eval_info += '{0} : {1}'.format(key, value)
+            eval_info += '{0} : {1}, '.format(key, value)
 
         return eval_info[:-1]
