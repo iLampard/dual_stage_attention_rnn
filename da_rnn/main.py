@@ -33,13 +33,13 @@ flags.DEFINE_string('save_dir', 'logs', 'Root path to save logs and models')
 
 def main(argv):
     data_loader = BaseLoader.get_loader_from_flags(FLAGS.data_set)
-    train_set, valid_set, test_set, scaler = data_loader.load_dataset(FLAGS.num_steps)
+    train_set, valid_set, test_set = data_loader.load_dataset(FLAGS.num_steps)
 
     model = DualStageRNN(encoder_dim=FLAGS.encoder_dim,
                          decoder_dim=FLAGS.decoder_dim,
                          num_steps=FLAGS.num_steps,
                          num_series=data_loader.num_series)
-    model_runner = ModelRunner(model, scaler, FLAGS)
+    model_runner = ModelRunner(model, data_loader.scaler, FLAGS)
 
     model_runner.train(train_set, valid_set, test_set, FLAGS.max_epoch)
 
