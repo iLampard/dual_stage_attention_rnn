@@ -65,7 +65,7 @@ achieve better results.
 
 ```bash
 # To shuffle the train data and use current exogeneous factor
-python main.py --write_summary True --max_epoch 200 --shuffle_train True --use_cur_exg True
+python main.py --write_summary True --max_epoch 100 --shuffle_train True --use_cur_exg True
 ```
 
 After 100 epochs(with data shuffled and current exogenous factors used) the prediction is plot as     

@@ -20,7 +20,7 @@ flags.DEFINE_string('data_set', 'data_nasdaq', 'Source data set for training')
 
 # Model runner params
 flags.DEFINE_bool('write_summary', False, 'Whether to write summary of epoch in training using Tensorboard')
-flags.DEFINE_integer('max_epoch', 300, 'Max epoch number of training')
+flags.DEFINE_integer('max_epoch', 100, 'Max epoch number of training')
 flags.DEFINE_float('learning_rate', 0.001, 'Initial learning rate')
 flags.DEFINE_integer('batch_size', 128, 'Batch size of data fed into model')
 flags.DEFINE_bool('plot_prediction', False, 'Whether to plot predictions after model evaluation')
@@ -44,10 +44,11 @@ def main(argv):
                          num_steps=FLAGS.num_steps,
                          num_series=data_loader.num_series,
                          use_cur_exg=FLAGS.use_cur_exg)
+
     model_runner = ModelRunner(model, data_loader.label_scaler, FLAGS)
 
     model_runner.train(train_set, valid_set, test_set, FLAGS.max_epoch)
-
+    # model_runner.restore('logs/ModelWrapper/lr-0.001_encoder-32_decoder-32/20190922-125838/saved_model')
     model_runner.evaluate(test_set, plot=FLAGS.plot_prediction)
 
     return
