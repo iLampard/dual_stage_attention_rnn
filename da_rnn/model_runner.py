@@ -39,7 +39,6 @@ class ModelRunner:
         self.decoder_dim = flags.decoder_dim
         self.batch_size = flags.batch_size
         self.metrics = metrics
-        self.plot_pred = flags.plot_prediction
 
         logging.get_absl_logger().addHandler(logging_base.StreamHandler())
 
@@ -110,7 +109,7 @@ class ModelRunner:
 
         logging.info('Training finished')
 
-    def evaluate(self, dataset):
+    def evaluate(self, dataset, plot=False):
         """ Evaluate the model on valid / test set """
         logging.info('Start evaluation')
 
@@ -126,7 +125,7 @@ class ModelRunner:
         logging.info(eval_info)
 
         logging.info('Evaluation finished')
-        if self.plot_pred:
+        if plot:
             self.plot_prediction(predictions, labels, num_plot=60)
         return metrics_dict
 

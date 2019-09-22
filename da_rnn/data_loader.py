@@ -79,9 +79,9 @@ class BaseLoader:
     def __init__(self):
         self.train_data, self.valid_data, self.test_data, self.label_scaler = self.process_data()
 
-    def load_dataset(self, num_steps, do_shuffle_train):
-        train_dataset = DataSet(self.train_data, num_steps, do_shuffle=do_shuffle_train)
-        valid_dataset = DataSet(self.valid_data, num_steps)
+    def load_dataset(self, num_steps, do_shuffle):
+        train_dataset = DataSet(self.train_data, num_steps, do_shuffle=do_shuffle)
+        valid_dataset = DataSet(self.valid_data, num_steps, do_shuffle=do_shuffle)
         test_dataset = DataSet(self.test_data, num_steps)
         return train_dataset, valid_dataset, test_dataset
 
