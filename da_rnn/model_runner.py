@@ -115,6 +115,9 @@ class ModelRunner:
 
         loss, predictions, labels = self.run_one_epoch(dataset, RunnerPhase.PREDICT, self.lr)
 
+        predictions = dataset.inverse_standard_scale(predictions, self.scaler[0], self.scaler[1])
+        labels = dataset.inverse_standard_scale(labels, self.scaler[0], self.scaler[1])
+
         metrics_dict = self.metrics.get_metrics_dict(predictions, labels)
 
         eval_info = self.metrics.metrics_dict_to_str(metrics_dict)
@@ -123,6 +126,7 @@ class ModelRunner:
 
         logging.info('Evaluation finished')
 
+        self.plot_prediction(predictions, labels, num_plot=60)
         return metrics_dict
 
     def run_one_epoch(self, dataset, phase, lr):
@@ -132,8 +136,12 @@ class ModelRunner:
         epoch_labels = []
         total_batch = dataset.num_samples // self.batch_size
         for _ in range(total_batch):
-            (input_x,), (label,) = zip(*dataset.next_batch(self.batch_size))
-            loss, prediction = self.model_wrapper.run_batch((input_x, label),
+            (input_x,), (input_label,), (input_x_exg,), (label,) = \
+                zip(*dataset.next_batch(self.batch_size))
+            loss, prediction = self.model_wrapper.run_batch((input_x,
+                                                             input_label,
+                                                             input_x_exg,
+                                                             label),
                                                             lr,
                                                             phase=phase)
             epoch_loss.append(loss)
@@ -160,6 +168,28 @@ class ModelRunner:
         os.makedirs(folder_path)
         model_path = os.path.join(folder_path, 'saved_model')
         return folder_path, model_path
+
+    @staticmethod
+    def plot_prediction(predictions, labels, num_plot=60):
+        """ Plot the comparison graph, only select num_plot points """
+        import matplotlib.pyplot as plt
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        # ax.plot(x, x, c='b', marker="^", ls='--', label='Greedy', fillstyle='none')
+        # ax.plot(x, x + 1, c='g', marker=(8, 2, 0), ls='--', label='Greedy Heuristic')
+        # ax.plot(x, (x + 1) ** 2, c='k', ls='-', label='Random')
+        # ax.plot(x, (x - 1) ** 2, c='r', marker="v", ls='-', label='GMC')
+        ax.plot(labels[:num_plot], c='m', marker="o", ls='--', label='Ground True', fillstyle='none')
+        ax.plot(predictions[:num_plot], c='k', marker="+", ls='-', label='DA-RNN')
+
+        plt.legend(loc=2)
+
+        plt.xlabel('Time axis')
+        plt.show()
+
+        return
 
 
 class ModelWrapper:

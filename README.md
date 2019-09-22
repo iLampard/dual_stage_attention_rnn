@@ -14,10 +14,19 @@ using Tensorflow 1.13.
 For testing, NASDAQ data from repo [da-rnn](https://github.com/Seanny123/da-rnn/blob/master/data/) is used. 
  
  
+### Test result 
+    
+    
+    | Model Setup| #Epoch |RMSE   |  MAE  | MAPE| 
+    |--|---|---|---|--|
+    | Do-Shuffle|  |   | ||
+    | No-Shuffle|  |   | ||
+    
 ## Requirement
 
 ```bash
 tensorflow==1.13.1
+scikit-learn
 ```
 
 Although I have not tested, I guess it should be working under tf 1.12 and tf 1.14 as well.

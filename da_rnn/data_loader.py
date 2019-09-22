@@ -1,18 +1,33 @@
 """ Data loaders  """
 import pandas as pd
 import numpy as np
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
 
 class DataSet:
-    def __init__(self, data, num_steps):
+    def __init__(self, data, num_steps, do_shuffle=False):
         # num_steps = steps for x
         # Add 1 => predict one step after num_steps, i.e., T+1
         self.processed_data = self.window_rolling(data, num_steps + 1)
+        self.shuffle_idx = None
 
-        # (None, num_steps, x_dim + 1)
-        # x_dim + 1 because last col is y, i.e., y_1, y_2,...y_T which will also be used in training
-        self.input_x = self.processed_data[:, :-1, :]
+        # Do a shuffle to avoid overfitting
+        if do_shuffle:
+            self.shuffle_idx = np.random.permutation(len(self.processed_data))
+            self.processed_data = self.processed_data[self.shuffle_idx]
+
+        # (None, num_steps, x_dim)
+        self.input_x = self.processed_data[:, :-1, :-1]
+
+        # last col is y, i.e., y_1, y_2,...y_T which will also be used in training
+        # (None, num_steps, 1)
+        self.input_label = self.processed_data[:, :-1, -1]
+        self.input_label = self.input_label[:, :, np.newaxis]
+
+        # (None, 1, x_dim)
+        # Exogenous factors at the same time step with predicted label
+        self.input_exg_x = self.processed_data[:, -1, :-1]
+        self.input_exg_x = self.input_exg_x[:, np.newaxis]
 
         self.labels = self.processed_data[:, -1, -1]
         # (None, 1)
@@ -25,8 +40,10 @@ class DataSet:
         if self.batch_idx >= self.num_samples // batch_size:
             self.batch_idx = self.batch_idx - self.num_samples // batch_size
         batch_x = self.input_x[self.batch_idx: self.batch_idx + batch_size]
+        batch_x_label = self.input_label[self.batch_idx: self.batch_idx + batch_size]
+        batch_x_exg = self.input_exg_x[self.batch_idx: self.batch_idx + batch_size]
         batch_y = self.labels[self.batch_idx: self.batch_idx + batch_size]
-        yield (batch_x, batch_y)
+        yield (batch_x, batch_x_label, batch_x_exg, batch_y)
         self.batch_idx += 1
 
     @property
@@ -50,15 +67,20 @@ class DataSet:
 
         return output.reshape([-1, window_size, dim])
 
+    @staticmethod
+    def inverse_standard_scale(val, mean, std):
+        """ Inverse standard scale """
+        return val * std + mean
+
 
 class BaseLoader:
     name = 'baseloader'
 
     def __init__(self):
-        self.train_data, self.valid_data, self.test_data, self.scaler = self.process_data()
+        self.train_data, self.valid_data, self.test_data, self.label_scaler = self.process_data()
 
-    def load_dataset(self, num_steps):
-        train_dataset = DataSet(self.train_data, num_steps)
+    def load_dataset(self, num_steps, do_shuffle_train):
+        train_dataset = DataSet(self.train_data, num_steps, do_shuffle=do_shuffle_train)
         valid_dataset = DataSet(self.valid_data, num_steps)
         test_dataset = DataSet(self.test_data, num_steps)
         return train_dataset, valid_dataset, test_dataset
@@ -68,7 +90,8 @@ class BaseLoader:
         train_data = []
         valid_data = []
         test_data = []
-        return train_data, valid_data, test_data
+        label_scaler = None
+        return train_data, valid_data, test_data, label_scaler
 
     @staticmethod
     def get_loader_from_flags(dataset_name):
@@ -106,9 +129,10 @@ class NasdaqLoader(BaseLoader):
         raw_data = pd.read_csv(csv_file, header=0)
 
         train_data, valid_data, test_data = self.split_train_test(raw_data.values)
-        scaler = MinMaxScaler((0, 100))
-        train_data = scaler.fit_transform(train_data)
+        scaler = StandardScaler().fit(train_data)
+        train_data = scaler.transform(train_data)
         valid_data = scaler.transform(valid_data)
         test_data = scaler.transform(test_data)
+        label_scaler = (scaler.mean_[-1], np.sqrt(scaler.var_[-1]))
 
-        return train_data, valid_data, test_data, scaler
+        return train_data, valid_data, test_data, label_scaler

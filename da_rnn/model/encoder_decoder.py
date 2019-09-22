@@ -84,14 +84,15 @@ class Encoder(keras.Model):
         inputs: (batch_size, num_steps, num_series)
         """
 
+
         def one_step(prev_state_tuple, current_input):
             """ Move along the time axis by one step  """
 
             # (batch_size, num_series, num_steps)
-            inputs_ = tf.transpose(inputs, perm=[0, 2, 1])
+            inputs_scan = tf.transpose(inputs, perm=[0, 2, 1])
 
             # (batch_size, num_series)
-            weight = self.attention_layer(inputs_, prev_state_tuple)
+            weight = self.attention_layer(inputs_scan, prev_state_tuple)
 
             weighted_current_input = weight * current_input
 
@@ -113,7 +114,7 @@ class Encoder(keras.Model):
                               initializer=(self.init_hidden_state,
                                            self.init_cell_state))
 
-        # (batch_size, num_steps, hidden_dim)
+        # (batch_size, num_steps, encoder_dim)
         all_hidden_state = tf.transpose(state_tuple[0], perm=[1, 0, 2])
         return all_hidden_state
 
@@ -157,10 +158,11 @@ class Decoder(keras.Model):
         # Get the batch size from inputs
         self.batch_size = tf.shape(encoder_states)[0]
         self.num_steps = encoder_states.get_shape().as_list()[1]
+        self.encoder_dim = encoder_states.get_shape().as_list()[-1]
 
         init_hidden_state = tf.random_normal([self.batch_size, self.decoder_dim])
         init_cell_state = tf.random_normal([self.batch_size, self.decoder_dim])
-        init_context = tf.random_normal([self.batch_size, self.decoder_dim])
+        init_context = tf.random_normal([self.batch_size, self.encoder_dim])
 
         # (num_steps, batch_size, num_series)
         inputs_ = tf.transpose(encoder_states, perm=[1, 0, 2])
@@ -176,7 +178,7 @@ class Decoder(keras.Model):
         all_hidden_state = tf.transpose(state_tuple[0], perm=[1, 0, 2])
 
         # (batch_size, num_steps, encoder_dim)
-        all_context = tf.transpose(state_tuple[0], perm=[1, 0, 2])
+        all_context = tf.transpose(all_context, perm=[1, 0, 2])
 
         last_hidden_state = all_hidden_state[:, -1, :]
         last_context = all_context[:, -1, :]

@@ -15,6 +15,7 @@ class Metrics:
 
         res['rmse'] = self.rmse(predictions, labels)
         res['mae'] = self.mae(predictions, labels)
+        res['mape'] = self.mape(predictions, labels)
 
         return res
 
@@ -27,6 +28,11 @@ class Metrics:
     def mae(predictions, labels):
         """ MAE ratio """
         return np.mean(np.abs(predictions - labels))
+
+    @staticmethod
+    def mape(predictions, labels):
+        """ MAPE ratio """
+        return np.mean(np.abs(np.subtract(predictions, labels) / labels))
 
     @staticmethod
     def metrics_dict_to_str(metrics_dict):

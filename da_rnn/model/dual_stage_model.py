@@ -5,11 +5,12 @@ from da_rnn.model.encoder_decoder import Encoder, Decoder
 
 
 class DualStageRNN:
-    def __init__(self, encoder_dim, decoder_dim, num_steps, num_series):
+    def __init__(self, encoder_dim, decoder_dim, num_steps, num_series, use_cur_exg):
         self.encoder_dim = encoder_dim
         self.decoder_dim = decoder_dim
         self.num_steps = num_steps
         self.num_series = num_series
+        self.use_cur_exg = use_cur_exg
 
     def build(self):
         """ Build up the network  """
@@ -19,6 +20,16 @@ class DualStageRNN:
         # (batch_size, num_steps, 1)
         self.input_label = tf.placeholder(tf.float32, shape=[None, self.num_steps, 1])
 
+        # (batch_size, 1, num_series)
+        self.input_x_exg = tf.placeholder(tf.float32, shape=[None, 1, self.num_series])
+
+        if self.use_cur_exg:
+            self.input = tf.concat([self.input_x, self.input_x_exg], axis=1)
+            self.encoder_steps = self.num_steps + 1
+        else:
+            self.input = self.input_x
+            self.encoder_steps = self.num_steps
+
         # (batch_size, 1)
         self.labels = tf.placeholder(tf.float32, shape=[None, 1])
 
@@ -26,7 +37,7 @@ class DualStageRNN:
 
         self.is_training = tf.placeholder(tf.bool)
 
-        self.encoder = Encoder(self.encoder_dim, self.num_steps)
+        self.encoder = Encoder(self.encoder_dim, self.encoder_steps)
 
         self.decoder = Decoder(self.decoder_dim, self.num_steps)
 
@@ -40,7 +51,7 @@ class DualStageRNN:
         """ Forward through time axis """
 
         # (batch_size, num_steps, encoder_dim)
-        encoder_states = self.encoder(self.input_x)
+        encoder_states = self.encoder(self.input)
 
         # (batch_size, 1)
         pred = self.decoder(encoder_states, self.input_label)
@@ -51,10 +62,11 @@ class DualStageRNN:
 
     def train(self, sess, batch_data, lr):
         """ Define the train process """
-        batch_x, batch_y = batch_data
-        feed_dict = {self.input_x: batch_x[:, :, :-1],
-                     self.input_label: batch_x[:, :, -1:],
-                     self.labels: batch_y,
+        input_x, input_label, input_x_exg, label = batch_data
+        feed_dict = {self.input_x: input_x,
+                     self.input_label: input_label,
+                     self.input_x_exg: input_x_exg,
+                     self.labels: label,
                      self.lr: lr,
                      self.is_training: True}
 
@@ -64,10 +76,11 @@ class DualStageRNN:
 
     def predict(self, sess, batch_data):
         """ Define the prediction process """
-        batch_x, batch_y = batch_data
-        feed_dict = {self.input_x: batch_x[:, :, :-1],
-                     self.input_label: batch_x[:, :, -1:],
-                     self.labels: batch_y,
+        input_x, input_label, input_x_exg, label = batch_data
+        feed_dict = {self.input_x: input_x,
+                     self.input_label: input_label,
+                     self.input_x_exg: input_x_exg,
+                     self.labels: label,
                      self.is_training: False}
 
         loss, prediction = sess.run([self.loss, self.pred], feed_dict=feed_dict)
