@@ -26,12 +26,12 @@ da_rnn
 
 ### Run the training and prediction pipeline
 
-Suppose we want to run 500 epochs and use Tensorboard to 
+Suppose we want to run 200 epochs and use Tensorboard to 
 visualize the process
 
 ```bash
 cd da_rnn
-python main.py --write_summary True --max_epoch 500
+python main.py --write_summary True --max_epoch 200
 ```
 
 To check the description of all flags
@@ -57,23 +57,28 @@ achieve better results.
      
 | # Epoch | Shuffle Train | Use Current Exg| Econder/Decoder Dim | RMSE |  MAE| MAPE  |
 | --- | --- | --- | --- | --- | --- | --- |
-| 300 | False |  False  | 32     | |  |
-| 300 | True |  False  |    32  | |  |
-| 300 | False |  True  | 32     | |  |
-| 300 | True |  True  |    32  | |  |
+| 100 | False |  False  | 32     | 105.671| 104.60 | 2.15%|
+| 100 | True |  False  |    32  |29.849 | 29.033 |0.59% | 
+| 100 | False |  True  | 32     | 46.287| 32.398 |0.66% |
+| 100 | True |  True  |    32  |1.491 | 1.172 | 0.024%|
 
 
-One example of command line to run the script
 ```bash
-python main.py --write_summary True --max_epoch 300 --shuffle_train True --use_cur_exg True
+# To shuffle the train data and use current exogeneous factor
+python main.py --write_summary True --max_epoch 200 --shuffle_train True --use_cur_exg True
 ```
 
+After 100 epochs(with data shuffled and current exogenous factors used) the prediction is plot as     
+
+
+<img src="https://github.com/iLampard/dual_stage_attention_rnn/blob/master/figures/pred_plot.png" />     
      
 ## Requirement
 
 ```bash
 tensorflow==1.13.1
-scikit-learn
+scikit-learn==0.21.3
+numpy==1.16.4
 ```
 
 Although I have not tested, I guess it should be working under tf 1.12 and tf 1.14 as well.

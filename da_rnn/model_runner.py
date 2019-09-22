@@ -170,19 +170,15 @@ class ModelRunner:
         return folder_path, model_path
 
     @staticmethod
-    def plot_prediction(predictions, labels, num_plot=60):
+    def plot_prediction(predictions, labels, num_plot=200):
         """ Plot the comparison graph, only select num_plot points """
         import matplotlib.pyplot as plt
 
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        # ax.plot(x, x, c='b', marker="^", ls='--', label='Greedy', fillstyle='none')
-        # ax.plot(x, x + 1, c='g', marker=(8, 2, 0), ls='--', label='Greedy Heuristic')
-        # ax.plot(x, (x + 1) ** 2, c='k', ls='-', label='Random')
-        # ax.plot(x, (x - 1) ** 2, c='r', marker="v", ls='-', label='GMC')
         ax.plot(labels[:num_plot], c='b', marker="^", ls='--', label='Ground True', fillstyle='none')
-        ax.plot(predictions[:num_plot], c='k', marker="+", ls='-', label='DA-RNN')
+        ax.plot(predictions[:num_plot], c='k', marker="v", ls='-', label='DA-RNN')
 
         plt.legend(loc=2)
 
