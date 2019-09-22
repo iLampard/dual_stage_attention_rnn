@@ -26,7 +26,7 @@ da_rnn
 
 ### Run the training and prediction pipeline
 
-Suppose we want to run 200 epochs and use Tensorboard to 
+Suppose we want to run 100 epochs and use Tensorboard to 
 visualize the process
 
 ```bash
@@ -52,7 +52,7 @@ where *path* can be found in the log which shows the relative dir where the mode
 ### Test result 
     
    
-Results of my experiments are list below. Running more epochs and use larger encoder/decoder dimension could possibly 
+Results of my experiments are listed below. Running more epochs and applying larger encoder/decoder dimension could possibly 
 achieve better results.
      
 | # Epoch | Shuffle Train | Use Current Exg| Econder/Decoder Dim | RMSE |  MAE| MAPE  |
