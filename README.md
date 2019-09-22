@@ -9,6 +9,9 @@ using Tensorflow 1.13.
 - Nasdaq data is used for testing, which is from repo [da-rnn](https://github.com/Seanny123/da-rnn/blob/master/data/).
 - Based on the [discussion](https://github.com/Seanny123/da-rnn/issues/4), i implemented both cases where current 
 exogenous factor is included, i.e.,
+<img src="https://latex.codecogs.com/gif.latex?\widehat{y}_{T}=f(y_1,y_2,...,y_{T-1},x_1,x_2,...,x_T)" title="\widehat{y}_{T}=f(y_1,y_2,...,y_{T-1},x_1,x_2,...,x_T)" /></a>
+
+
 <img src="https://latex.codecogs.com/svg.latex?\Large&space;\hat{y}_T=f(y_1,..y_{T-1}, x_1,x_2,...,x_T)" /> 
 as well as excluded, i.e. <img src="https://latex.codecogs.com/svg.latex?\Large&space;\hat{y}_T=f(y_1,..y_{T-1}, x_1,x_2,...,x_{T-1})" /> .
 - A ModelRunner class is added to control the pipeline of model training and evaluation.
