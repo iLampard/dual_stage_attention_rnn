@@ -39,6 +39,7 @@ class ModelRunner:
         self.decoder_dim = flags.decoder_dim
         self.batch_size = flags.batch_size
         self.metrics = metrics
+        self.plot_pred = flags.plot_prediction
 
         logging.get_absl_logger().addHandler(logging_base.StreamHandler())
 
@@ -125,8 +126,8 @@ class ModelRunner:
         logging.info(eval_info)
 
         logging.info('Evaluation finished')
-
-        self.plot_prediction(predictions, labels, num_plot=60)
+        if self.plot_pred:
+            self.plot_prediction(predictions, labels, num_plot=60)
         return metrics_dict
 
     def run_one_epoch(self, dataset, phase, lr):
@@ -181,7 +182,7 @@ class ModelRunner:
         # ax.plot(x, x + 1, c='g', marker=(8, 2, 0), ls='--', label='Greedy Heuristic')
         # ax.plot(x, (x + 1) ** 2, c='k', ls='-', label='Random')
         # ax.plot(x, (x - 1) ** 2, c='r', marker="v", ls='-', label='GMC')
-        ax.plot(labels[:num_plot], c='m', marker="o", ls='--', label='Ground True', fillstyle='none')
+        ax.plot(labels[:num_plot], c='b', marker="^", ls='--', label='Ground True', fillstyle='none')
         ax.plot(predictions[:num_plot], c='k', marker="+", ls='-', label='DA-RNN')
 
         plt.legend(loc=2)

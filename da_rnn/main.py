@@ -20,7 +20,7 @@ flags.DEFINE_string('data_set', 'data_nasdaq', 'Source data set for training')
 
 # Model runner params
 flags.DEFINE_bool('write_summary', True, 'Whether to write summary of epoch in training using Tensorboard')
-flags.DEFINE_integer('max_epoch', 10, 'Max epoch number of training')
+flags.DEFINE_integer('max_epoch', 500, 'Max epoch number of training')
 flags.DEFINE_float('learning_rate', 0.001, 'Initial learning rate')
 flags.DEFINE_integer('batch_size', 128, 'Batch size of data fed into model')
 flags.DEFINE_bool('plot_prediction', False, 'Whether to plot predictions after model evaluation')
