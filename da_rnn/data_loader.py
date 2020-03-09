@@ -38,11 +38,14 @@ class DataSet:
     def next_batch(self, batch_size):
         """ Return batch data - x and label  """
         if self.batch_idx >= self.num_samples // batch_size:
-            self.batch_idx = self.batch_idx - self.num_samples // batch_size
-        batch_x = self.input_x[self.batch_idx: self.batch_idx + batch_size]
-        batch_x_label = self.input_label[self.batch_idx: self.batch_idx + batch_size]
-        batch_x_exg = self.input_exg_x[self.batch_idx: self.batch_idx + batch_size]
-        batch_y = self.labels[self.batch_idx: self.batch_idx + batch_size]
+            self.batch_idx -= self.num_samples // batch_size
+
+        start_idx = self.batch_idx * batch_size
+        end_idx = min((self.batch_idx + 1) * batch_size, self.num_samples)
+        batch_x = self.input_x[start_idx: end_idx]
+        batch_x_label = self.input_label[start_idx: end_idx]
+        batch_x_exg = self.input_exg_x[start_idx: end_idx]
+        batch_y = self.labels[start_idx: end_idx]
         yield (batch_x, batch_x_label, batch_x_exg, batch_y)
         self.batch_idx += 1
 
